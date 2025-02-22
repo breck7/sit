@@ -1,0 +1,153 @@
+hashAtom
+ description A SHA1 hash string
+ regex [0-9a-f]{40}
+ paint constant
+
+abstractTreeOperationParser
+ extends abstractScrollParser
+ description Base class for tree operations
+ atoms cueAtom
+ cueFromId
+ javascript
+  buildHtml() {
+   return ""
+  }
+
+touchParser
+ extends abstractTreeOperationParser
+ description Create a blank file.
+ atoms cueAtom filePathAtom
+ example
+  touch src/newfile.js
+  touch existing.txt
+
+abstractCommitMetaDataParser
+ description Set the commit author
+ cueFromId
+ atoms cueAtom
+
+authorParser
+ extends abstractCommitMetaDataParser
+ description Set the commit author
+ catchAllAtomType stringAtom
+ example
+  author John Doe <john@example.com>
+
+orderParser
+ extends abstractCommitMetaDataParser
+ description Set the commit index
+ atoms cueAtom integerAtom
+ example
+  order 1
+
+abstractHashParser
+ extends abstractCommitMetaDataParser
+ atoms cueAtom hashAtom
+
+parentParser
+ extends abstractHashParser
+ description Reference to parent commit
+ example
+  parent 123abc
+
+idHashParser
+ extends abstractHashParser
+ cue id
+
+timestampParser
+ extends abstractCommitMetaDataParser
+ description Set commit timestamp
+ catchAllAtomType dateAtom
+ example
+  timestamp 2024-02-18T10:30:00Z
+
+messageParser
+ extends abstractCommitMetaDataParser
+ description Commit message
+ catchAllAtomType stringAtom
+ example
+  message Initial commit
+
+commitParser
+ extends abstractTreeOperationParser
+ description Record a new commit
+ cue commit
+ inScope abstractCommitMetaDataParser
+ example
+  commit
+   author John Doe <john@example.com>
+   parent [hash]
+   timestamp 2024-02-18T10:30:00Z
+   message Initial commit
+   id [hash]
+
+// File operation parsers
+writeParser
+ extends abstractTreeOperationParser
+ description Create or update a file with content
+ atoms cueAtom filePathAtom hashAtom
+ baseParser blobParser
+ example
+  write src/main.js [hash]
+   console.log("Hello world");
+
+deleteParser
+ extends abstractTreeOperationParser
+ description Delete a file
+ atoms cueAtom filePathAtom
+ example
+  delete old_file.txt
+
+renameParser
+ extends abstractTreeOperationParser
+ description Move/rename a file
+ atoms cueAtom filePathAtom filePathAtom
+ example
+  rename old_name.txt new_name.txt
+
+mkdirParser
+ extends abstractTreeOperationParser
+ description Create a directory
+ atoms cueAtom filePathAtom
+ example
+  mkdir src/components
+
+abstractPatchOperationParser
+ description Base class for file update operations
+ atoms cueAtom
+ cueFromId
+ javascript
+  buildHtml() {
+   return ""
+  }
+
+patchInsertParser
+ extends abstractPatchOperationParser
+ description Insert content at specific line
+ atoms cueAtom integerAtom
+ catchAllAtomType anyAtom
+ cue patch
+ baseParser blobParser
+ example
+  patch  foo.js [hash]
+   insert 5
+    New content at char 5
+    with multiple lines
+   insert 5 New content at char 5
+
+patchDeleteParser
+ extends abstractPatchOperationParser
+ description Delete content at specific position
+ atoms cueAtom integerAtom integerAtom
+ example
+  patch foo.js [hash]
+   delete 5
+
+patchParser
+ extends abstractTreeOperationParser
+ description Patch a file.
+ atoms cueAtom filePathAtom hashAtom
+ inScope abstractPatchOperationParser
+ example
+  patch src/main.js [hash]
+   console.log("Hello world");

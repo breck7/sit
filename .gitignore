@@ -1,0 +1,8 @@
+package-lock.json
+node_modules/
+ignore/
+*.txt
+*.sit
+.DS_Store
+*.html
+*.css

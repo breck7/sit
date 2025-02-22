@@ -1,0 +1,17 @@
+sit.parsers
+
+write foo.bar 123
+ Hello world
+touch wham.js
+touch boom.js
+commit
+ author Breck Yunits
+ timestamp 23
+ message My commit message
+ order 1
+touch foobar.js
+commit
+ author Sam
+ timestamp 23
+ message okay dokie
+ order 2
