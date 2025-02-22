@@ -6,7 +6,7 @@ Sit is a new research prototype to explore an alternative to Git which stores pr
 
 With Sit we will attempt to implement all major features of Git on top of a Particle Chain.
 
-You can try the *alpha* demo with:
+Very little currently works, but you can try the *alpha* demo with:
 
 code
  git clone https://github.com/breck7/sit
