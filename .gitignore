@@ -6,3 +6,4 @@ ignore/
 .DS_Store
 *.html
 *.css
+*.json
