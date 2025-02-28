@@ -115,6 +115,16 @@ In addition to change and commit objects, should other types of objects, such as
 
 Good question! This is the type of thing we will discover as we develop this prototype.
 
+Could Particle Chains support change objects that extend the grammar of the Particle Chain itself?
+==================================================================================================
+
+Yes! This is the type of thing we will explore as we develop this prototype.
+
+Should Particle Chains support file imports?
+============================================
+
+Probably! This is the type of thing we will discover as we develop this prototype.
+
 What might a Particle Chain look like for a cryptocurrency?
 ===========================================================
 
