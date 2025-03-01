@@ -1,0 +1,251 @@
+gitRepoParser
+ description Git repository root directory.
+ extends abstractScrollParser
+ atoms cueAtom filePathAtom
+ baseUrlParser
+  atoms cueAtom filePathAtom
+  cueFromId
+ javascript
+  buildHtml() {
+   return `<h2>Git Repository: ${this.content}</h2>`
+  }
+
+commitParser
+ description A git commit object.
+ extends abstractScrollParser
+ atoms cueAtom stringAtom
+ catchAllParser commitLineParser
+ inScope messageParser treeParser parentParser authorParser committerParser
+ javascript
+  buildHtml() {
+   const hash = this.getAtom(1)
+   const details = this.map(part => part.buildHtml()).join('')
+   return `<div class="git-commit">
+     <h3>Commit: ${hash}</h3>
+     ${details}
+   </div>`
+  }
+
+commitLineParser
+ catchAllAtomType stringAtom
+
+treeParser
+ description A reference to a tree object in a commit.
+ extends abstractScrollParser
+ atoms cueAtom stringAtom
+ javascript
+  buildHtml() {
+   const hash = this.getAtom(1)
+   return `<div class="git-tree-ref">Tree: <a href="#tree-${hash}">${hash}</a></div>`
+  }
+
+parentParser
+ description A reference to a parent commit.
+ extends abstractScrollParser
+ atoms cueAtom stringAtom
+ javascript
+  buildHtml() {
+   const hash = this.getAtom(1)
+   return `<div class="git-parent-ref">Parent: <a href="#commit-${hash}">${hash}</a></div>`
+  }
+
+authorParser
+ description Commit author information.
+ extends abstractScrollParser
+ atoms cueAtom
+ catchAllAtomType stringAtom
+ javascript
+  buildHtml() {
+   return `<div class="git-author">Author: ${this.content}</div>`
+  }
+
+committerParser
+ description Commit committer information.
+ extends abstractScrollParser
+ atoms cueAtom
+ catchAllAtomType stringAtom
+ javascript
+  buildHtml() {
+   return `<div class="git-committer">Committer: ${this.content}</div>`
+  }
+
+messageParser
+ description Commit message.
+ extends abstractScrollParser
+ atoms cueAtom
+ catchAllAtomType stringAtom
+ catchAllParser messageLineParser
+ javascript
+  buildHtml() {
+   const firstLine = this.getAtom(1)
+   const restLines = this.map(part => part.content).join('\n')
+   return `<div class="git-message">
+     <div class="git-message-title">${firstLine}</div>
+     ${restLines ? `<div class="git-message-body">${restLines.replace(/\n/g, '<br>')}</div>` : ''}
+   </div>`
+  }
+
+messageLineParser
+ catchAllAtomType stringAtom
+
+treeObjectParser
+ description A git tree object.
+ extends abstractScrollParser
+ atoms cueAtom stringAtom
+ catchAllParser treeEntryParser
+ javascript
+  buildHtml() {
+   const hash = this.getAtom(1)
+   const entries = this.map(entry => entry.buildHtml()).join('')
+   return `<div class="git-tree" id="tree-${hash}">
+     <h3>Tree: ${hash}</h3>
+     <table class="git-tree-entries">
+       <tr>
+         <th>Mode</th>
+         <th>Type</th>
+         <th>Hash</th>
+         <th>Path</th>
+       </tr>
+       ${entries}
+     </table>
+   </div>`
+  }
+
+treeEntryParser
+ atoms modeAtom objectTypeAtom hashAtom
+ catchAllAtomType stringAtom
+ javascript
+  buildHtml() {
+   const mode = this.getAtom(0)
+   const type = this.getAtom(1)
+   const hash = this.getAtom(2)
+   const path = this.content.trim()
+   return `<tr>
+     <td>${mode}</td>
+     <td>${type}</td>
+     <td><a href="#${type}-${hash}">${hash}</a></td>
+     <td>${path}</td>
+   </tr>`
+  }
+
+modeAtom
+ paint constant.numeric
+
+objectTypeAtom
+ enum blob tree
+ paint constant
+
+hashAtom
+ regex [0-9a-f]{40}
+ paint string
+
+blobParser
+ description A git blob object.
+ extends abstractScrollParser
+ atoms cueAtom hashAtom
+ catchAllParser blobLineParser
+ javascript
+  buildHtml() {
+   const hash = this.getAtom(1)
+   const content = this.map(line => line.content).join('\n')
+   return `<div class="git-blob" id="blob-${hash}">
+     <h3>Blob: ${hash}</h3>
+     <pre class="git-blob-content">${this.escapeHtml(content)}</pre>
+   </div>`
+  }
+  escapeHtml(text) {
+   return text
+     .replace(/&/g, "&amp;")
+     .replace(/</g, "&lt;")
+     .replace(/>/g, "&gt;")
+     .replace(/"/g, "&quot;")
+     .replace(/'/g, "&#039;");
+  }
+
+blobLineParser
+ catchAllAtomType stringAtom
+
+binaryBlobParser
+ description A binary git blob object encoded in base64.
+ extends abstractScrollParser
+ atoms cueAtom hashAtom encodingAtom
+ catchAllParser binaryDataParser
+ javascript
+  buildHtml() {
+   const hash = this.getAtom(1)
+   const encoding = this.getAtom(2)
+   const data = this.map(line => line.content).join('')
+   return `<div class="git-binary-blob" id="blob-${hash}">
+     <h3>Binary Blob: ${hash}</h3>
+     <div class="git-binary-info">Encoding: ${encoding}</div>
+     <div class="git-binary-size">Size: ${this.calculateSize(data)} bytes</div>
+     <div class="git-binary-preview">
+       ${this.tryRenderPreview(data, encoding)}
+     </div>
+   </div>`
+  }
+  calculateSize(base64Data) {
+   // Calculate approximate original size from base64
+   return Math.floor(base64Data.length * 0.75)
+  }
+  tryRenderPreview(data, encoding) {
+   if (encoding !== 'base64') return 'Preview not available'
+   
+   // Try to detect if it's an image
+   if (data.startsWith('/9j/') || data.startsWith('iVBOR')) {
+     return `<img src="data:image/png;base64,${data}" alt="Binary data preview">`
+   }
+   
+   return 'Preview not available (not a recognized image format)'
+  }
+
+binaryDataParser
+ catchAllAtomType stringAtom
+
+encodingAtom
+ enum base64 hex
+ paint constant
+
+tagParser
+ description A git tag object.
+ extends abstractScrollParser
+ atoms cueAtom stringAtom
+ inScope objectParser typeParser taggerParser messageParser
+ javascript
+  buildHtml() {
+   const name = this.getAtom(1)
+   const details = this.map(part => part.buildHtml()).join('')
+   return `<div class="git-tag">
+     <h3>Tag: ${name}</h3>
+     ${details}
+   </div>`
+  }
+
+objectParser
+ description Object referenced by a tag.
+ extends abstractScrollParser
+ atoms cueAtom hashAtom
+ javascript
+  buildHtml() {
+   const hash = this.getAtom(1)
+   return `<div class="git-object-ref">Object: <a href="#commit-${hash}">${hash}</a></div>`
+  }
+
+typeParser
+ description Type of object referenced by a tag.
+ extends abstractScrollParser
+ atoms cueAtom objectTypeAtom
+ javascript
+  buildHtml() {
+   return `<div class="git-type">Type: ${this.getAtom(1)}</div>`
+  }
+
+taggerParser
+ description Tag author information.
+ extends abstractScrollParser
+ atoms cueAtom
+ catchAllAtomType stringAtom
+ javascript
+  buildHtml() {
+   return `<div class="git-tagger">Tagger: ${this.content}</div>`
+  }
