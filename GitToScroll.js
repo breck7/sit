@@ -334,7 +334,7 @@ function main() {
     process.exit(1)
   }
 
-  const gitDir = process.argv[2]
+  const gitDir = path.join(process.argv[2], ".git")
   const outputFile = process.argv[3]
 
   try {
