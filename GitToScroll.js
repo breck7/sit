@@ -49,10 +49,13 @@ class GitToScroll {
     try {
       for (const packFile of packFiles) {
         console.log(`Unpacking ${path.basename(packFile)}...`)
-        execSync(`git unpack-objects < "${packFile}"`, {
-          cwd: repoRoot,
-          stdio: ["pipe", "pipe", "pipe"], // Suppress output
-        })
+
+        execSync(
+          `mv ${packFile} . ; mv ${packFile.replace(".pack", ".idx")} .; git unpack-objects < "${packFile.replace(".git/objects/pack/", "")}"`,
+          {
+            cwd: repoRoot,
+          },
+        )
       }
       console.log("Repository unpacked successfully.")
     } catch (err) {
@@ -65,12 +68,6 @@ class GitToScroll {
 
   // Main method to generate the Scroll file
   generateScrollFile() {
-    this.appendLine("# Git Repository Structure")
-    this.appendLine("")
-    this.appendLine(`gitRepo ${this.gitDir}`)
-    this.appendLine(` baseUrl ${path.dirname(this.gitDir)}`)
-    this.appendLine("")
-
     // Find the HEAD commit and process it first to get a nicely ordered file
     const headCommit = this.getHeadCommit()
     if (headCommit) {
@@ -78,20 +75,9 @@ class GitToScroll {
     }
 
     // Add sections for different object types
-    this.appendLine("## Commit Objects")
-    this.appendLine("")
     this.processAllObjects("commit")
-
-    this.appendLine("## Tree Objects")
-    this.appendLine("")
     this.processAllObjects("tree")
-
-    this.appendLine("## Blob Objects")
-    this.appendLine("")
     this.processAllObjects("blob")
-
-    this.appendLine("## Tag Objects")
-    this.appendLine("")
     this.processAllObjects("tag")
 
     // Write the output to the file
@@ -245,7 +231,7 @@ class GitToScroll {
       offset = nullIndex + 21
 
       this.appendLine(
-        ` ${mode} ${this.getTypeFromMode(mode)} ${shaHex}  ${path}`,
+        ` ${mode} ${this.getTypeFromMode(mode)} ${shaHex} ${path}`,
       )
     }
 
