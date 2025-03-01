@@ -244,7 +244,7 @@ class GitToScroll {
     const isBinary = this.isBinaryContent(content)
 
     if (isBinary) {
-      this.appendLine(`binaryBlob ${hash} base64`)
+      this.appendLine(`blob ${hash} base64`)
       this.appendLine(` ${content.toString("base64")}`)
     } else {
       this.appendLine(`blob ${hash}`)
