@@ -1,0 +1,35 @@
+execParser
+ description Execute shell commands and display the output.
+ extends abstractScrollParser
+ catchAllParser lineOfCodeParser
+ catchAllAtomType codeAtom
+ cueFromId
+ example
+  exec
+   echo "Hello world"
+   date
+ javascript
+  execute() {
+    if (!this.isNodeJs()) {
+      this.results = "Error: exec only works in Node.js environment"
+      return
+    }
+    try {
+      const { execSync } = require("child_process")
+      const commands = this.content ? this.content : this.subparticlesToString()
+      const results = execSync(commands.replace(/\n/g, "; ")).toString()
+      this.results = results.trim().split(/\n/g).pop()
+    } catch (err) {
+      this.results = `Error executing command: ${err.message}`
+    }
+  }
+  async load() {
+    this.execute()
+  }
+  results = "Not yet executed"
+  buildHtml() {
+    return `<pre class="scrollCodeBlock">${this.buildTxt().replace(/</g, "&lt;")}</pre>`
+  }
+  buildTxt() {
+    return this.results.trim()
+  }

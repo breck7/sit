@@ -116,7 +116,7 @@ class SitCLI extends SimpleCLI {
     if (!historyParticle) return this.error(errorMessages.noSit(cwd))
     if (!files.length) return this.error("No file paths provided to add.")
 
-    const changes = historyParticle.addFiles(files)
+    const changes = await historyParticle.addFiles(files)
     if (!changes.length) {
       this.log("No changes to add")
       return
@@ -133,7 +133,8 @@ class SitCLI extends SimpleCLI {
     const historyParticle = this.loadHistoryParticle(cwd)
     if (!historyParticle) return this.error(errorMessages.noSit(cwd))
 
-    const { stagedChanges, unstagedChanges } = historyParticle
+    const { stagedChanges } = historyParticle
+    const unstagedChanges = await historyParticle.getUnstagedChanges()
 
     // Display status
     if (stagedChanges.length === 0) {
@@ -291,7 +292,7 @@ class SitCLI extends SimpleCLI {
     }
 
     // Check for unstaged changes
-    const unstaged = historyParticle.unstagedChanges
+    const unstaged = await historyParticle.getUnstagedChanges()
     if (unstaged.length > 0) {
       return this.error(
         `You have ${unstaged.length} unstaged changes. Please stash or commit them before checkout.`,
@@ -321,10 +322,10 @@ class SitCLI extends SimpleCLI {
     console.log(historyParticle.toString())
   }
 
-  diffCommand(cwd, files) {
+  async diffCommand(cwd, files) {
     const historyParticle = this.loadHistoryParticle(cwd)
     if (!historyParticle) return this.error(errorMessages.noSit(cwd))
-    const changes = historyParticle.diff(files || [])
+    const changes = await historyParticle.diff(files || [])
     console.log(changes)
   }
 

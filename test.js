@@ -97,7 +97,7 @@ testParticles.statusCommand = async (areEqual) => {
 
     areEqual(historyParticle.stagedChanges.length, 0, "should be no changed")
     areEqual(
-      historyParticle.unstagedChanges.length,
+      (await historyParticle.getUnstagedChanges()).length,
       0,
       "should be no unstaged changed",
     )
@@ -123,7 +123,7 @@ testParticles.addCommand = async (areEqual) => {
     cli.silence()
     cli.initCommand(tmpDir)
     const historyParticle = cli.loadHistoryParticle(tmpDir)
-    const changes = historyParticle.addFiles([])
+    const changes = await historyParticle.addFiles([])
 
     areEqual(changes.length, 0, "should indicate no changes to add")
   } finally {
@@ -152,7 +152,7 @@ testParticles.basicFlows = async (areEqual) => {
     // Assert
     areEqual(historyParticle.stagedChanges.length, 2, "2 staged changes")
     areEqual(
-      historyParticle.unstagedChanges.length,
+      (await historyParticle.getUnstagedChanges()).length,
       0,
       "should be no unstaged changes",
     )

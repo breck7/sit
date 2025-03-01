@@ -2,7 +2,17 @@
 const path = require("path")
 const fs = require("fs")
 const fastDiff = require("fast-diff")
+const git = require("isomorphic-git")
 const crypto = require("crypto")
+const { createHash } = crypto
+
+// Create a deterministic blob hash (for a file)
+async function createBlobHash(content) {
+  let { oid, type, object, format } = await git.hashBlob({
+    object: content,
+  })
+  return oid
+}
 
 // Particles Includes
 const { Disk } = require("scrollsdk/products/Disk.node.js")
@@ -57,7 +67,7 @@ const calculateCommitHash = (
   }
 
   // Calculate hash
-  return crypto.createHash("sha1").update(hashParts.join("\n")).digest("hex")
+  return createHash("sha1").update(hashParts.join("\n")).digest("hex")
 }
 
 class PatchHandler {
@@ -351,33 +361,29 @@ History size: ${(this.bytes / 1024).toFixed(2)} KB`
     return path.dirname(this.filepath)
   }
 
-  addFiles(files) {
-    const changes = this.diff(files)
+  async addFiles(files) {
+    const changes = await this.diff(files)
     if (!changes.length) return changes
     this.appendAndSave(changes + "\n")
     return changes
   }
 
-  diff(files) {
-    const liveTree = this.scanWorkingDirectory(this.cwd, files)
+  async diff(files) {
+    const liveTree = await this.scanWorkingDirectory(this.cwd, files)
     const changes = this._generateChanges(this.stagedTree, liveTree, files)
     return this.formatChanges(changes)
   }
 
-  get liveTree() {
-    return this.scanWorkingDirectory(this.cwd, ["."])
-  }
-
-  scanWorkingDirectory(cwd, files) {
+  async scanWorkingDirectory(cwd, files) {
     const liveTree = new Map()
     for (const scanPath of files) {
       const fullPath = path.join(cwd, scanPath)
-      this.scanPath(fullPath, cwd, liveTree)
+      await this.scanPath(fullPath, cwd, liveTree)
     }
     return liveTree
   }
 
-  scanPath(fullPath, rootPath, liveTree) {
+  async scanPath(fullPath, rootPath, liveTree) {
     const relativePath = path.relative(rootPath, fullPath)
     const ignore = (filepath) => {
       if (filepath.endsWith(".sit")) return true
@@ -400,7 +406,7 @@ History size: ${(this.bytes / 1024).toFixed(2)} KB`
       if (relativePath) liveTree.set(relativePath, { type: "directory" })
       const entries = fs.readdirSync(fullPath)
       for (const entry of entries) {
-        this.scanPath(path.join(fullPath, entry), rootPath, liveTree)
+        await this.scanPath(path.join(fullPath, entry), rootPath, liveTree)
       }
     } else if (stats.isFile()) {
       // Read file as buffer to check if binary
@@ -414,7 +420,7 @@ History size: ${(this.bytes / 1024).toFixed(2)} KB`
           type: "binary",
           content: base64Content,
           size: stats.size,
-          hash: crypto.createHash("sha1").update(buffer).digest("hex"),
+          hash: createHash("sha1").update(buffer).digest("hex"),
         })
       } else {
         // Handle text file
@@ -422,7 +428,7 @@ History size: ${(this.bytes / 1024).toFixed(2)} KB`
         liveTree.set(relativePath, {
           type: "file",
           content,
-          hash: crypto.createHash("sha1").update(content).digest("hex"),
+          hash: await createBlobHash(content),
         })
       }
     }
@@ -564,9 +570,9 @@ History size: ${(this.bytes / 1024).toFixed(2)} KB`
       .join("\n")
   }
 
-  get unstagedChanges() {
+  async getUnstagedChanges() {
     // Scan current working directory
-    const liveTree = this.scanWorkingDirectory(this.cwd, ["."])
+    const liveTree = await this.scanWorkingDirectory(this.cwd, ["."])
     const changes = []
     const { stagedTree } = this
 

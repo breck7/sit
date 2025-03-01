@@ -12,6 +12,7 @@
   "author": "Breck Yunits",
   "dependencies": {
     "fast-diff": "^1.3.0",
+    "isomorphic-git": "^1.29.0",
     "minimist": "^1.2.8",
     "scroll-cli": "^170.5.0",
     "scrollsdk": "^102.0.0"

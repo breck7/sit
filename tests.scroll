@@ -1,0 +1,26 @@
+exec.parsers
+
+# Sit should create the same hash as a git commit
+exec
+ rm -rf gitTemp
+ mkdir gitTemp
+ cd gitTemp
+ echo Hi > readme.md
+ git init
+ git add .
+ export GIT_AUTHOR_DATE="2023-01-01T00:00:00Z"
+ export GIT_COMMITTER_DATE="2023-01-01T00:00:00Z"
+ git commit -m "Initial commit"
+ git rev-parse HEAD
+assert txt equals d25d35bbfd486e00c0fdaf5dc942ef104db5edb4
+
+exec
+ rm -rf sitTemp
+ mkdir sitTemp
+ cd sitTemp
+ echo Hi > readme.md
+ sit init
+ sit add .
+ sit commit Initial commit
+ sit log
+assert txt includes d25d35bbfd486e00c0fdaf5dc942ef104db5edb4
