@@ -11,8 +11,10 @@ class GitToScroll {
     this.gitDir = gitDir
     this.outputFile = outputFile
     this.objectsDir = path.join(gitDir, "objects")
-    this.output = []
     this.processedObjects = new Set()
+
+    // Create or truncate the output file
+    fs.writeFileSync(this.outputFile, "")
 
     // Check if the directory exists and is a git repository
     if (!fs.existsSync(path.join(gitDir, "HEAD"))) {
@@ -80,8 +82,6 @@ class GitToScroll {
     this.processAllObjects("blob")
     this.processAllObjects("tag")
 
-    // Write the output to the file
-    fs.writeFileSync(this.outputFile, this.output.join("\n"))
     console.log(`Generated Scroll file at ${this.outputFile}`)
   }
 
@@ -321,9 +321,9 @@ class GitToScroll {
     }
   }
 
-  // Append a line to the output
+  // Append a line to the output file (stream write)
   appendLine(line) {
-    this.output.push(line)
+    fs.appendFileSync(this.outputFile, line + "\n")
   }
 }
 
