@@ -5,6 +5,7 @@ const path = require("path")
 const zlib = require("zlib")
 const crypto = require("crypto")
 const { execSync } = require("child_process")
+const readline = require("readline")
 
 class GitToScroll {
   constructor(gitDir, outputFile) {
@@ -12,6 +13,11 @@ class GitToScroll {
     this.outputFile = outputFile
     this.objectsDir = path.join(gitDir, "objects")
     this.processedObjects = new Set()
+    this.totalObjects = 0
+    this.processedCount = 0
+    this.startTime = Date.now()
+    this.lastUpdateTime = Date.now()
+    this.lastProcessedCount = 0
 
     // Create or truncate the output file
     fs.writeFileSync(this.outputFile, "")
@@ -23,6 +29,29 @@ class GitToScroll {
 
     // Unpack the repository
     this.unpackRepository()
+
+    // Count total objects to process
+    this.countTotalObjects()
+  }
+
+  // Count the total number of objects in the repository
+  countTotalObjects() {
+    console.log("Counting objects in repository...")
+    let count = 0
+    const dirs = fs.readdirSync(this.objectsDir)
+
+    for (const dir of dirs) {
+      // Skip info and pack directories
+      if (dir === "info" || dir === "pack") continue
+
+      const objectDir = path.join(this.objectsDir, dir)
+      if (!fs.statSync(objectDir).isDirectory()) continue
+
+      count += fs.readdirSync(objectDir).length
+    }
+
+    this.totalObjects = count
+    console.log(`Found ${count} objects to process.`)
   }
 
   // Unpack all packed objects in the repository
@@ -70,6 +99,9 @@ class GitToScroll {
 
   // Main method to generate the Scroll file
   generateScrollFile() {
+    console.log(`Starting to generate Scroll file at ${this.outputFile}`)
+    this.startTime = Date.now()
+
     // Find the HEAD commit and process it first to get a nicely ordered file
     const headCommit = this.getHeadCommit()
     if (headCommit) {
@@ -82,6 +114,13 @@ class GitToScroll {
     this.processAllObjects("blob")
     this.processAllObjects("tag")
 
+    // Final update to ensure we show 100%
+    this.updateProgressBar()
+
+    const elapsedSeconds = (Date.now() - this.startTime) / 1000
+    console.log(
+      `\nCompleted! Processed ${this.processedCount} objects in ${elapsedSeconds.toFixed(2)} seconds.`,
+    )
     console.log(`Generated Scroll file at ${this.outputFile}`)
   }
 
@@ -128,6 +167,18 @@ class GitToScroll {
       if (requiredType && object.type !== requiredType) return
 
       this.processedObjects.add(hash)
+      this.processedCount++
+
+      // Update progress bar every 100ms or 100 objects, whichever comes first
+      const currentTime = Date.now()
+      if (
+        currentTime - this.lastUpdateTime > 100 ||
+        this.processedCount - this.lastProcessedCount >= 100
+      ) {
+        this.updateProgressBar()
+        this.lastUpdateTime = currentTime
+        this.lastProcessedCount = this.processedCount
+      }
 
       switch (object.type) {
         case "commit":
@@ -145,6 +196,38 @@ class GitToScroll {
       }
     } catch (err) {
       console.warn(`Error processing object ${hash}: ${err.message}`)
+    }
+  }
+
+  // Update and display the progress bar
+  updateProgressBar() {
+    if (this.totalObjects === 0) return
+
+    const percent = Math.min(
+      100,
+      Math.floor((this.processedCount / this.totalObjects) * 100),
+    )
+    const elapsed = (Date.now() - this.startTime) / 1000
+    const objectsPerSecond =
+      elapsed > 0 ? Math.floor(this.processedCount / elapsed) : 0
+
+    // Calculate the progress bar length (50 characters)
+    const barLength = 50
+    const completedLength = Math.floor((percent / 100) * barLength)
+    const bar =
+      "█".repeat(completedLength) + "░".repeat(barLength - completedLength)
+
+    // Clear the current line and write the progress
+    readline.clearLine(process.stdout, 0)
+    readline.cursorTo(process.stdout, 0)
+
+    process.stdout.write(
+      `[${bar}] ${percent}% | ${this.processedCount}/${this.totalObjects} objects | ${objectsPerSecond} obj/s`,
+    )
+
+    // If we're done, add a new line
+    if (this.processedCount >= this.totalObjects) {
+      process.stdout.write("\n")
     }
   }
 
